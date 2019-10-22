@@ -2,6 +2,7 @@ import * as twgl from "./twgl/twgl-full.js";
 
 import { loadText } from "./util";
 import { VoxBox, VoxQuad, quadsToArrays, VoxArraysData } from "./vox.js";
+import { checkFramebufferStatus } from "./misc.js";
 
 window.onload = async () => {
   const canvas = document.querySelector("#c") as HTMLCanvasElement;
@@ -35,25 +36,35 @@ window.onload = async () => {
 
   console.log(arrays);
 
+  let bufferWH = [canvas.clientWidth * 2, canvas.clientHeight * 2];
+
+  let depthTexture = twgl.createTexture(gl, {
+    width: bufferWH[0],
+    height: bufferWH[1],
+    internalFormat: gl.DEPTH24_STENCIL8
+  });
+
   const framebufferInfo = twgl.createFramebufferInfo(
     gl,
     [
-      { format: gl.RGBA},
-      { format: gl.RGBA},
-      { format: gl.RGBA},
-      { format: gl.RGBA},
-      { format: gl.DEPTH_STENCIL, },
+      { format: gl.RGBA },
+      { format: gl.RGBA },
+      { format: gl.RGBA },
+      //{ format: gl.RGBA },
+      { format: gl.DEPTH_STENCIL, attachment: depthTexture }
     ],
-    canvas.clientWidth * 2,
-    canvas.clientHeight * 2
+    bufferWH[0],
+    bufferWH[1]
   );
 
   gl.drawBuffers([
     gl.COLOR_ATTACHMENT0,
     gl.COLOR_ATTACHMENT1,
     gl.COLOR_ATTACHMENT2,
-    gl.COLOR_ATTACHMENT3
+    //gl.COLOR_ATTACHMENT3
   ]);
+
+  console.log(checkFramebufferStatus(gl));
 
   twgl.bindFramebufferInfo(gl, null);
 

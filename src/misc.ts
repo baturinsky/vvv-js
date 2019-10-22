@@ -129,6 +129,21 @@ export class OldVoxBody {
   }
 }
 
+export function checkFramebufferStatus(gl:WebGLRenderingContext, target = gl.FRAMEBUFFER){
+  let status = gl.checkFramebufferStatus(target);
+  for(let s of [ 
+  "FRAMEBUFFER_COMPLETE",
+  "FRAMEBUFFER_INCOMPLETE_ATTACHMENT",
+  "FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT",
+  "FRAMEBUFFER_INCOMPLETE_DIMENSIONS",
+  "FRAMEBUFFER_UNSUPPORTED",
+  "FRAMEBUFFER_INCOMPLETE_MULTISAMPLE",
+  "RENDERBUFFER_SAMPLES"]){
+    if(gl[s] == status)
+      return s;
+  }
+  return "UNKNOWN";
+};
 
 /*
 export class VoxArrays {

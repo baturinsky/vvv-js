@@ -4398,6 +4398,8 @@
             gl.renderbufferStorage(gl.RENDERBUFFER, format, width, height);
           } else {
             const textureOptions = Object.assign({}, attachmentOptions);
+            textureOptions.internalFormat = textureOptions.format;
+            delete textureOptions.format;
             textureOptions.width = width;
             textureOptions.height = height;
             if (textureOptions.auto === undefined) {
@@ -4797,6 +4799,50 @@
         }
     }
 
+    function checkFramebufferStatus(gl, target = gl.FRAMEBUFFER) {
+        let status = gl.checkFramebufferStatus(target);
+        for (let s of [
+            "FRAMEBUFFER_COMPLETE",
+            "FRAMEBUFFER_INCOMPLETE_ATTACHMENT",
+            "FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT",
+            "FRAMEBUFFER_INCOMPLETE_DIMENSIONS",
+            "FRAMEBUFFER_UNSUPPORTED",
+            "FRAMEBUFFER_INCOMPLETE_MULTISAMPLE",
+            "RENDERBUFFER_SAMPLES"
+        ]) {
+            if (gl[s] == status)
+                return s;
+        }
+        return "UNKNOWN";
+    }
+    /*
+    export class VoxArrays {
+      position = [] as number[];
+      color = [] as number[];
+      normals = [] as number[];
+      indices = [] as number[];
+
+      constructor(o?) {
+        if (o) Object.assign(this, o);
+      }
+
+      concat(a: VoxArraysData, transformPosition?: (vec: number[]) => number[]) {
+        let ind = this.position.length / 3;
+        let position = transformPosition
+          ? [...new Array(a.position.length / 3)]
+              .map((v, i) => transformPosition(a.position.slice(i * 3, i * 3 + 3)))
+              .flat()
+          : a.position;
+        this.position = this.position.concat(position);
+        this.color = this.color.concat(a.color);
+        this.normals = this.normals.concat(a.normals);
+        this.indices = this.indices.concat(a.indices.map(n => n + ind));
+        return this;
+      }
+    }
+
+    */
+
     window.onload = () => __awaiter(void 0, void 0, void 0, function* () {
         const canvas = document.querySelector("#c");
         const gl = canvas.getContext("webgl2");
@@ -4816,19 +4862,25 @@
             indices: va.triangles
         };
         console.log(arrays);
+        let bufferWH = [canvas.clientWidth * 2, canvas.clientHeight * 2];
+        let depthTexture = createTexture(gl, {
+            width: bufferWH[0],
+            height: bufferWH[1],
+            internalFormat: gl.DEPTH24_STENCIL8
+        });
         const framebufferInfo = createFramebufferInfo(gl, [
             { format: gl.RGBA },
             { format: gl.RGBA },
             { format: gl.RGBA },
-            { format: gl.RGBA },
-            { format: gl.DEPTH_STENCIL, },
-        ], canvas.clientWidth * 2, canvas.clientHeight * 2);
+            //{ format: gl.RGBA },
+            { format: gl.DEPTH_STENCIL, attachment: depthTexture }
+        ], bufferWH[0], bufferWH[1]);
         gl.drawBuffers([
             gl.COLOR_ATTACHMENT0,
             gl.COLOR_ATTACHMENT1,
             gl.COLOR_ATTACHMENT2,
-            gl.COLOR_ATTACHMENT3
         ]);
+        console.log(checkFramebufferStatus(gl));
         bindFramebufferInfo(gl, null);
         const screenUniforms = {
             u_color: framebufferInfo.attachments[0],

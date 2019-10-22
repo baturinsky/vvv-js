@@ -31,7 +31,7 @@ void main() {
       if(v_texCoord.y>0.5)
         outColor = color;
       else
-        outColor = depth;
+        outColor = vec4(vec3((1. - depth.r) * 500.), 1.0);
   }
 
   //outColor = light * color;

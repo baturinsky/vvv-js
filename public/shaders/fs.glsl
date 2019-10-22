@@ -19,7 +19,7 @@ in vec4 v_color;
 layout(location=0) out vec4 outColor;
 layout(location=1) out vec4 outLight;
 layout(location=2) out vec4 outNormal;
-layout(location=3) out vec4 outDepth;
+//layout(location=3) out vec4 outDepth;
 
 uniform vec4 u_ambient;
 uniform sampler2D u_diffuse;
@@ -51,11 +51,11 @@ void main() {
   );*/
 
   outLight = u_light[0].color * (dot(a_normal, halfVector) + u_ambient);
-  float depth = 1. - (1. - gl_FragCoord.z)*400.;
+  //float depth = 1. - (1. - gl_FragCoord.z)*400.;
   //outLight = vec4(1., 0., 1., 1.);
   //outDepth = vec4(vec3((1. - gl_FragCoord.z)*500.), 1.0);
 
-  outDepth = vec4(vec3(depth), 1.0);
+  //outDepth = vec4(vec3(depth), 1.0);
 
   outColor = diffuseColor;
 
