@@ -1,12 +1,21 @@
 import * as twgl from "./twgl/twgl-full.js";
+import {m4} from "./twgl/twgl-full.js";
 
 import { loadText } from "./util";
 import { VoxBox, VoxQuad, quadsToArrays, VoxArraysData } from "./vox.js";
-import { checkFramebufferStatus } from "./misc.js";
+
+/*import SPECTOR from "spectorjs";
+var spector = new SPECTOR.Spector();
+spector.displayUI();*/
 
 window.onload = async () => {
-  const canvas = document.querySelector("#c") as HTMLCanvasElement;
+  const canvas = document.getElementById("c") as HTMLCanvasElement;
   const gl = canvas.getContext("webgl2");
+
+  /*gl.getExtension('EXT_color_buffer_float');
+  gl.getExtension('OES_texture_float_linear');*/
+
+  //twgl.addExtensionsToContext(gl);
 
   let [vs, fs, vsScreen, fsScreen] = await Promise.all([
     loadText("./shaders/vs.glsl"),
@@ -28,7 +37,7 @@ window.onload = async () => {
   let va = await loadStage();
 
   let arrays = {
-    color: { numComponents: 1, data: Uint32Array.from(va.colors) },
+    color: { size: 1, data: Uint32Array.from(va.colors) },
     normals: va.normals,
     position: va.vertices,
     indices: va.triangles
@@ -36,18 +45,19 @@ window.onload = async () => {
 
   console.log(arrays);
 
-  let bufferWH = [canvas.clientWidth * 2, canvas.clientHeight * 2];
+  let superSampling = 1;
+  let bufferWH = [canvas.clientWidth * superSampling, canvas.clientHeight * superSampling];
 
   let depthTexture = twgl.createTexture(gl, {
     width: bufferWH[0],
     height: bufferWH[1],
     internalFormat: gl.DEPTH24_STENCIL8
   });
-
+    
   const framebufferInfo = twgl.createFramebufferInfo(
     gl,
     [
-      { format: gl.RGBA },
+      { internalFormat: gl.RGBA },
       { format: gl.RGBA },
       { format: gl.RGBA },
       //{ format: gl.RGBA },
@@ -64,58 +74,18 @@ window.onload = async () => {
     //gl.COLOR_ATTACHMENT3
   ]);
 
-  console.log(checkFramebufferStatus(gl));
+  console.log("status", twgl.glEnumToString(gl, gl.checkFramebufferStatus(gl.FRAMEBUFFER)));
 
   twgl.bindFramebufferInfo(gl, null);
-
-  const screenUniforms = {
-    u_color: framebufferInfo.attachments[0],
-    u_light: framebufferInfo.attachments[1],
-    u_normal: framebufferInfo.attachments[2],
-    u_depth: framebufferInfo.attachments[3],
-  };
 
   const screenBufferInfo = twgl.createBufferInfoFromArrays(gl, {
     position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
   });
 
   const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
-
-  const uniforms = {
-    "u_light[0].pos": [0, 100, 100],
-    "u_light[0].color": [1, 1, 1, 1],
-    u_ambient: [0.2, 0.2, 0.2, 1],
-    u_specular: [1, 1, 1, 0],
-    u_shininess: 50,
-    u_specularFactor: 1,
-    u_viewInverse: null as twgl.m4.Mat4,
-    u_world: null as twgl.m4.Mat4,
-    u_worldInverseTranspose: null as twgl.m4.Mat4,
-    u_worldViewProjection: null as twgl.m4.Mat4,
-    u_time: 0
-  };
-
-  const fov = (30 * Math.PI) / 180;
-  const aspect = canvas.clientWidth / canvas.clientHeight;
-  const zNear = 0.5;
-  const zFar = 800;
-  const projection = twgl.m4.perspective(fov, aspect, zNear, zFar);
-
-  const eye = [1, 300, 200];
-  const target = [0, 40, 40];
-  const up = [0, 0, 1];
-  const camera = twgl.m4.lookAt(eye, target, up);
-  const view = twgl.m4.inverse(camera);
-  const viewProjection = twgl.m4.multiply(projection, view);
-
-  uniforms.u_viewInverse = camera;
-
-  const world = twgl.m4.identity();
-  uniforms.u_world = world;
-  uniforms.u_worldInverseTranspose = twgl.m4.transpose(twgl.m4.inverse(world));
-  uniforms.u_worldViewProjection = twgl.m4.multiply(viewProjection, world);
-
+  
   console.log(bufferInfo);
+  
   const deferredRendering = true;
 
   //gl.enable(gl.BLEND);
@@ -126,6 +96,56 @@ window.onload = async () => {
     gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
     time *= 0.001;
     //time = 1;
+
+    const fov = (50 * Math.PI) / 180;
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+    const zNear = 0.5;
+    const zFar = 800;
+    const projection = m4.perspective(fov, aspect, zNear, zFar);
+  
+    //let eye = [1, 300, 200];
+
+    const eye = m4.transformPoint(m4.rotateZ(m4.identity(), time), [1, 300, 200])
+
+    const target = [0, 40, 40];
+    const up = [0, 0, 1];
+    const camera = m4.lookAt(eye, target, up);
+    const view = m4.inverse(camera);
+    const viewProjection = m4.multiply(projection, view);
+    
+    const world = m4.identity();
+  
+    const uniforms = {
+      "u_light[0].pos": [0, 100, 100],
+      "u_light[0].color": [1, 1, 1, 1],
+      u_ambient: [0.2, 0.2, 0.2, 1],
+      u_specular: [1, 1, 1, 0],
+      u_shininess: 50,
+      u_specularFactor: 1,
+      u_viewInverse: camera,
+      u_world: world,
+      u_worldInverseTranspose: m4.transpose(m4.inverse(world)),
+      u_worldViewProjection: viewProjection,
+      u_InverseWorldViewProjection: m4.inverse(viewProjection),
+      u_time: 0
+    };
+  
+    /*console.log(projection)
+    let a = [0, 0, 200]
+    let b = m4.transformPoint(uniforms.u_worldViewProjection, a);
+    let c = m4.transformPoint(uniforms.u_InverseWorldViewProjection, b);
+    console.log(a, b, c);*/
+    //console.log(m4.transformPoint(projection, [100, 100, 200]));
+  
+    const screenUniforms = {
+      u_color: framebufferInfo.attachments[0],
+      u_light_: framebufferInfo.attachments[1],
+      u_normal: framebufferInfo.attachments[2],
+      u_depth: framebufferInfo.attachments[3],
+    };
+  
+    Object.assign(screenUniforms, uniforms)
+  
 
     if (deferredRendering) twgl.bindFramebufferInfo(gl, framebufferInfo);
 

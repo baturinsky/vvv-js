@@ -570,6 +570,76 @@
       return dst;
     }
 
+    /**
+     * Modifies the given 4-by-4 matrix by a rotation around the z-axis by the given
+     * angle.
+     * @param {module:twgl/m4.Mat4} m The matrix.
+     * @param {number} angleInRadians The angle by which to rotate (in radians).
+     * @param {module:twgl/m4.Mat4} [dst] matrix to hold result. If none new one is created..
+     * @return {module:twgl/m4.Mat4} m once modified.
+     * @memberOf module:twgl/m4
+     */
+    function rotateZ(m, angleInRadians, dst) {
+      dst = dst || new MatType(16);
+
+      const m00 = m[0 * 4 + 0];
+      const m01 = m[0 * 4 + 1];
+      const m02 = m[0 * 4 + 2];
+      const m03 = m[0 * 4 + 3];
+      const m10 = m[1 * 4 + 0];
+      const m11 = m[1 * 4 + 1];
+      const m12 = m[1 * 4 + 2];
+      const m13 = m[1 * 4 + 3];
+      const c = Math.cos(angleInRadians);
+      const s = Math.sin(angleInRadians);
+
+      dst[ 0] = c * m00 + s * m10;
+      dst[ 1] = c * m01 + s * m11;
+      dst[ 2] = c * m02 + s * m12;
+      dst[ 3] = c * m03 + s * m13;
+      dst[ 4] = c * m10 - s * m00;
+      dst[ 5] = c * m11 - s * m01;
+      dst[ 6] = c * m12 - s * m02;
+      dst[ 7] = c * m13 - s * m03;
+
+      if (m !== dst) {
+        dst[ 8] = m[ 8];
+        dst[ 9] = m[ 9];
+        dst[10] = m[10];
+        dst[11] = m[11];
+        dst[12] = m[12];
+        dst[13] = m[13];
+        dst[14] = m[14];
+        dst[15] = m[15];
+      }
+
+      return dst;
+    }
+
+    /**
+     * Takes a 4-by-4 matrix and a vector with 3 entries,
+     * interprets the vector as a point, transforms that point by the matrix, and
+     * returns the result as a vector with 3 entries.
+     * @param {module:twgl/m4.Mat4} m The matrix.
+     * @param {module:twgl/v3.Vec3} v The point.
+     * @param {module:twgl/v3.Vec3} [dst] optional vec3 to store result
+     * @return {module:twgl/v3.Vec3} dst or new vec3 if not provided
+     * @memberOf module:twgl/m4
+     */
+    function transformPoint(m, v, dst) {
+      dst = dst || create();
+      const v0 = v[0];
+      const v1 = v[1];
+      const v2 = v[2];
+      const d = v0 * m[0 * 4 + 3] + v1 * m[1 * 4 + 3] + v2 * m[2 * 4 + 3] + m[3 * 4 + 3];
+
+      dst[0] = (v0 * m[0 * 4 + 0] + v1 * m[1 * 4 + 0] + v2 * m[2 * 4 + 0] + m[3 * 4 + 0]) / d;
+      dst[1] = (v0 * m[0 * 4 + 1] + v1 * m[1 * 4 + 1] + v2 * m[2 * 4 + 1] + m[3 * 4 + 1]) / d;
+      dst[2] = (v0 * m[0 * 4 + 2] + v1 * m[1 * 4 + 2] + v2 * m[2 * 4 + 2] + m[3 * 4 + 2]) / d;
+
+      return dst;
+    }
+
     /*
      * Copyright 2019 Gregg Tavares
      *
@@ -4398,8 +4468,8 @@
             gl.renderbufferStorage(gl.RENDERBUFFER, format, width, height);
           } else {
             const textureOptions = Object.assign({}, attachmentOptions);
-            textureOptions.internalFormat = textureOptions.format;
-            delete textureOptions.format;
+            //textureOptions.internalFormat = textureOptions.format;
+            //delete textureOptions.format;
             textureOptions.width = width;
             textureOptions.height = height;
             if (textureOptions.auto === undefined) {
@@ -4799,53 +4869,15 @@
         }
     }
 
-    function checkFramebufferStatus(gl, target = gl.FRAMEBUFFER) {
-        let status = gl.checkFramebufferStatus(target);
-        for (let s of [
-            "FRAMEBUFFER_COMPLETE",
-            "FRAMEBUFFER_INCOMPLETE_ATTACHMENT",
-            "FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT",
-            "FRAMEBUFFER_INCOMPLETE_DIMENSIONS",
-            "FRAMEBUFFER_UNSUPPORTED",
-            "FRAMEBUFFER_INCOMPLETE_MULTISAMPLE",
-            "RENDERBUFFER_SAMPLES"
-        ]) {
-            if (gl[s] == status)
-                return s;
-        }
-        return "UNKNOWN";
-    }
-    /*
-    export class VoxArrays {
-      position = [] as number[];
-      color = [] as number[];
-      normals = [] as number[];
-      indices = [] as number[];
-
-      constructor(o?) {
-        if (o) Object.assign(this, o);
-      }
-
-      concat(a: VoxArraysData, transformPosition?: (vec: number[]) => number[]) {
-        let ind = this.position.length / 3;
-        let position = transformPosition
-          ? [...new Array(a.position.length / 3)]
-              .map((v, i) => transformPosition(a.position.slice(i * 3, i * 3 + 3)))
-              .flat()
-          : a.position;
-        this.position = this.position.concat(position);
-        this.color = this.color.concat(a.color);
-        this.normals = this.normals.concat(a.normals);
-        this.indices = this.indices.concat(a.indices.map(n => n + ind));
-        return this;
-      }
-    }
-
-    */
-
+    /*import SPECTOR from "spectorjs";
+    var spector = new SPECTOR.Spector();
+    spector.displayUI();*/
     window.onload = () => __awaiter(void 0, void 0, void 0, function* () {
-        const canvas = document.querySelector("#c");
+        const canvas = document.getElementById("c");
         const gl = canvas.getContext("webgl2");
+        /*gl.getExtension('EXT_color_buffer_float');
+        gl.getExtension('OES_texture_float_linear');*/
+        //twgl.addExtensionsToContext(gl);
         let [vs, fs, vsScreen, fsScreen] = yield Promise.all([
             loadText("./shaders/vs.glsl"),
             loadText("./shaders/fs.glsl"),
@@ -4856,20 +4888,21 @@
         const screenProgramInfo = createProgramInfo(gl, [vsScreen, fsScreen], error => console.log(error));
         let va = yield loadStage();
         let arrays = {
-            color: { numComponents: 1, data: Uint32Array.from(va.colors) },
+            color: { size: 1, data: Uint32Array.from(va.colors) },
             normals: va.normals,
             position: va.vertices,
             indices: va.triangles
         };
         console.log(arrays);
-        let bufferWH = [canvas.clientWidth * 2, canvas.clientHeight * 2];
+        let superSampling = 1;
+        let bufferWH = [canvas.clientWidth * superSampling, canvas.clientHeight * superSampling];
         let depthTexture = createTexture(gl, {
             width: bufferWH[0],
             height: bufferWH[1],
             internalFormat: gl.DEPTH24_STENCIL8
         });
         const framebufferInfo = createFramebufferInfo(gl, [
-            { format: gl.RGBA },
+            { internalFormat: gl.RGBA },
             { format: gl.RGBA },
             { format: gl.RGBA },
             //{ format: gl.RGBA },
@@ -4880,47 +4913,12 @@
             gl.COLOR_ATTACHMENT1,
             gl.COLOR_ATTACHMENT2,
         ]);
-        console.log(checkFramebufferStatus(gl));
+        console.log("status", glEnumToString(gl, gl.checkFramebufferStatus(gl.FRAMEBUFFER)));
         bindFramebufferInfo(gl, null);
-        const screenUniforms = {
-            u_color: framebufferInfo.attachments[0],
-            u_light: framebufferInfo.attachments[1],
-            u_normal: framebufferInfo.attachments[2],
-            u_depth: framebufferInfo.attachments[3],
-        };
         const screenBufferInfo = createBufferInfoFromArrays(gl, {
             position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
         });
         const bufferInfo = createBufferInfoFromArrays(gl, arrays);
-        const uniforms = {
-            "u_light[0].pos": [0, 100, 100],
-            "u_light[0].color": [1, 1, 1, 1],
-            u_ambient: [0.2, 0.2, 0.2, 1],
-            u_specular: [1, 1, 1, 0],
-            u_shininess: 50,
-            u_specularFactor: 1,
-            u_viewInverse: null,
-            u_world: null,
-            u_worldInverseTranspose: null,
-            u_worldViewProjection: null,
-            u_time: 0
-        };
-        const fov = (30 * Math.PI) / 180;
-        const aspect = canvas.clientWidth / canvas.clientHeight;
-        const zNear = 0.5;
-        const zFar = 800;
-        const projection = perspective(fov, aspect, zNear, zFar);
-        const eye = [1, 300, 200];
-        const target = [0, 40, 40];
-        const up = [0, 0, 1];
-        const camera = lookAt(eye, target, up);
-        const view = inverse(camera);
-        const viewProjection = multiply(projection, view);
-        uniforms.u_viewInverse = camera;
-        const world = identity();
-        uniforms.u_world = world;
-        uniforms.u_worldInverseTranspose = transpose(inverse(world));
-        uniforms.u_worldViewProjection = multiply(viewProjection, world);
         console.log(bufferInfo);
         //gl.enable(gl.BLEND);
         //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -4929,6 +4927,46 @@
             gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
             time *= 0.001;
             //time = 1;
+            const fov = (50 * Math.PI) / 180;
+            const aspect = canvas.clientWidth / canvas.clientHeight;
+            const zNear = 0.5;
+            const zFar = 800;
+            const projection = perspective(fov, aspect, zNear, zFar);
+            //let eye = [1, 300, 200];
+            const eye = transformPoint(rotateZ(identity(), time), [1, 300, 200]);
+            const target = [0, 40, 40];
+            const up = [0, 0, 1];
+            const camera = lookAt(eye, target, up);
+            const view = inverse(camera);
+            const viewProjection = multiply(projection, view);
+            const world = identity();
+            const uniforms = {
+                "u_light[0].pos": [0, 100, 100],
+                "u_light[0].color": [1, 1, 1, 1],
+                u_ambient: [0.2, 0.2, 0.2, 1],
+                u_specular: [1, 1, 1, 0],
+                u_shininess: 50,
+                u_specularFactor: 1,
+                u_viewInverse: camera,
+                u_world: world,
+                u_worldInverseTranspose: transpose(inverse(world)),
+                u_worldViewProjection: viewProjection,
+                u_InverseWorldViewProjection: inverse(viewProjection),
+                u_time: 0
+            };
+            /*console.log(projection)
+            let a = [0, 0, 200]
+            let b = m4.transformPoint(uniforms.u_worldViewProjection, a);
+            let c = m4.transformPoint(uniforms.u_InverseWorldViewProjection, b);
+            console.log(a, b, c);*/
+            //console.log(m4.transformPoint(projection, [100, 100, 200]));
+            const screenUniforms = {
+                u_color: framebufferInfo.attachments[0],
+                u_light_: framebufferInfo.attachments[1],
+                u_normal: framebufferInfo.attachments[2],
+                u_depth: framebufferInfo.attachments[3],
+            };
+            Object.assign(screenUniforms, uniforms);
             bindFramebufferInfo(gl, framebufferInfo);
             uniforms.u_time = time;
             gl.clearColor(0, 0, 0, 1);

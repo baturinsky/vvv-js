@@ -66,6 +66,7 @@ export type DrawObject = {
 export type AttachmentOptions = {
     attach?: number;
     format?: number;
+    internalFormat?: number;
     type?: number;
     target?: number;
     level?: number;

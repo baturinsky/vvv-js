@@ -201,8 +201,8 @@ function createFramebufferInfo(gl, attachments, width, height) {
         gl.renderbufferStorage(gl.RENDERBUFFER, format, width, height);
       } else {
         const textureOptions = Object.assign({}, attachmentOptions);
-        textureOptions.internalFormat = textureOptions.format;
-        delete textureOptions.format;
+        //textureOptions.internalFormat = textureOptions.format;
+        //delete textureOptions.format;
         textureOptions.width = width;
         textureOptions.height = height;
         if (textureOptions.auto === undefined) {

@@ -47,20 +47,15 @@ mat4 rotation3d(vec3 axis, float angle) {
 
 
 void main() {
-  mat4 rot = rotation3d(vec3(0., 0., 0.5), u_time );
+  //mat4 rot = rotation3d(vec3(0., 0., 0.5), u_time * 0. );
   vec4 t_position = position;
-  //v_texCoord = texcoord;
-  //mat4 rot = mat4(1.);
-  v_position = u_worldViewProjection * rot * t_position;
-  v_normal = (u_worldInverseTranspose * rot * vec4(normals, 0)).xyz;
-  //v_normal = (u_worldInverseTranspose * rot * vec4(norm[gl_VertexID/4], 0)).xyz;
-  //v_normal = (u_worldInverseTranspose * rot * vec4(norm[int(vind)/6], 0)).xyz;
-  v_surfaceToLight = u_light[0].pos - (u_world * t_position).xyz;
-  v_surfaceToView = (u_viewInverse[3] - (u_world * t_position)).xyz;
-  //debug_color = vec4(vec3(mod(vind,6.)/6.,floor(vind/6.)/6.,vind),1);
-  //v_color = vec4(float((color>>16)&u255)/255., float((color>>8)&u255)/255., float(color&u255)/255., float((color>>24)&u255)/255.);
-  //v_color = color;
-  //v_color = vec4(1.,0., 0., 1.);
+
+  v_position = u_worldViewProjection * t_position;
+  v_normal = normalize(u_worldInverseTranspose * vec4(normals, 0)).xyz;
+
+  v_surfaceToLight = normalize(u_light[0].pos - (u_world * t_position).xyz);
+  v_surfaceToView = normalize((u_viewInverse[3] - (u_world * t_position)).xyz);
+  
   v_color = vec4(float((color>>16)&u255)/255., float((color>>8)&u255)/255., float(color&u255)/255., 1.0);
   gl_Position = v_position;
 }
