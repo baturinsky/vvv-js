@@ -54,7 +54,7 @@ void main() {
         //outColor = vec4(vec3(depth.r/10.), 1.0);
   }
 
-  outColor = vec4(p2.xyz * 2.0, 1.0);
+  outColor = vec4(p2.xyz, 1.0);
   //outColor = vec4(vec3(p2.z)*2., 1.0);
   /*if(v_texCoord.x<0.5)
     outColor = vec4(vec3(p2.z), 1.0);
