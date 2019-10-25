@@ -503,7 +503,7 @@ function setAxis(a, v, axis, dst) {
 function perspective(fieldOfViewYInRadians, aspect, zNear, zFar, dst) {
   dst = dst || new MatType(16);
 
-  const f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfViewYInRadians);
+  const f = 1/ Math.tan(0.5 * fieldOfViewYInRadians);
   const rangeInv = 1.0 / (zNear - zFar);
 
   dst[0]  = f / aspect;

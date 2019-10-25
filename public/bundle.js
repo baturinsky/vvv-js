@@ -498,7 +498,7 @@
     function perspective(fieldOfViewYInRadians, aspect, zNear, zFar, dst) {
       dst = dst || new MatType(16);
 
-      const f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfViewYInRadians);
+      const f = 1/ Math.tan(0.5 * fieldOfViewYInRadians);
       const rangeInv = 1.0 / (zNear - zFar);
 
       dst[0]  = f / aspect;
@@ -4593,6 +4593,7 @@
     let loadText = (uri) => loadFile(uri, "text");
 
     let utf8 = new TextDecoder("utf-8");
+    const OVERHANG = 0.001;
     function getFile(path) {
         const p = new Promise((resolve, reject) => {
             var oReq = new XMLHttpRequest();
@@ -4659,8 +4660,8 @@
             ((normalInd - (normalInd % 2) + 4) % 6) + 1
         ].map(v => NormalVectors[v]);
         let vertices = [0, 1, 3, 2].map(vi => corner.map((r, i) => r +
-            (vi & 1 ? quadAxes[0][i] * sizes[0] : 0) +
-            (vi & 2 ? quadAxes[1][i] * sizes[1] : 0)));
+            quadAxes[0][i] * (vi & 1 ? OVERHANG + sizes[0] : -OVERHANG) +
+            quadAxes[1][i] * (vi & 2 ? OVERHANG + sizes[1] : -OVERHANG)));
         if (normalInd % 2 == 0) {
             [vertices[1], vertices[3]] = [vertices[3], vertices[1]];
         }
@@ -4797,7 +4798,8 @@
                                             for (let i = 0; i < sizes[1 - axi]; i++) {
                                                 let c = root + sizes[axi] * delta[axi] + i * delta[1 - axi];
                                                 if (box[c] != rootColor ||
-                                                    neighbors[c] & (1 << quadNormal)) {
+                                                    neighbors[c] & (1 << quadNormal) // || (sizes[axi] > sizes[1-axi]*4)
+                                                ) {
                                                     blocked[axi] = true;
                                                     break;
                                                 }
@@ -4875,8 +4877,9 @@
     window.onload = () => __awaiter(void 0, void 0, void 0, function* () {
         const canvas = document.getElementById("c");
         const gl = canvas.getContext("webgl2");
-        /*gl.getExtension('EXT_color_buffer_float');
-        gl.getExtension('OES_texture_float_linear');*/
+        gl.getExtension("EXT_color_buffer_float");
+        gl.getExtension("OES_texture_float_linear");
+        gl.getExtension("WEBGL_color_buffer_float");
         //twgl.addExtensionsToContext(gl);
         let [vs, fs, vsScreen, fsScreen] = yield Promise.all([
             loadText("./shaders/vs.glsl"),
@@ -4895,7 +4898,10 @@
         };
         console.log(arrays);
         let superSampling = 1;
-        let bufferWH = [canvas.clientWidth * superSampling, canvas.clientHeight * superSampling];
+        let bufferWH = [
+            canvas.clientWidth * superSampling,
+            canvas.clientHeight * superSampling
+        ];
         let depthTexture = createTexture(gl, {
             width: bufferWH[0],
             height: bufferWH[1],
@@ -4911,7 +4917,8 @@
         gl.drawBuffers([
             gl.COLOR_ATTACHMENT0,
             gl.COLOR_ATTACHMENT1,
-            gl.COLOR_ATTACHMENT2,
+            gl.COLOR_ATTACHMENT2
+            //gl.COLOR_ATTACHMENT3
         ]);
         console.log("status", glEnumToString(gl, gl.checkFramebufferStatus(gl.FRAMEBUFFER)));
         bindFramebufferInfo(gl, null);
@@ -4922,18 +4929,23 @@
         console.log(bufferInfo);
         //gl.enable(gl.BLEND);
         //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        resizeCanvasToDisplaySize(canvas);
+        gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
         function render(time) {
-            resizeCanvasToDisplaySize(canvas);
-            gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
             time *= 0.001;
             //time = 1;
+            //time = 3;
             const fov = (50 * Math.PI) / 180;
             const aspect = canvas.clientWidth / canvas.clientHeight;
             const zNear = 0.5;
             const zFar = 800;
             const projection = perspective(fov, aspect, zNear, zFar);
             //let eye = [1, 300, 200];
-            const eye = transformPoint(rotateZ(identity(), time), [1, 300, 200]);
+            const eye = transformPoint(rotateZ(identity(), time), [
+                1,
+                300,
+                200
+            ]);
             const target = [0, 40, 40];
             const up = [0, 0, 1];
             const camera = lookAt(eye, target, up);
@@ -4947,6 +4959,7 @@
                 u_specular: [1, 1, 1, 0],
                 u_shininess: 50,
                 u_specularFactor: 1,
+                u_viewportSize: [canvas.clientWidth, canvas.clientHeight],
                 u_viewInverse: camera,
                 u_world: world,
                 u_worldInverseTranspose: transpose(inverse(world)),
@@ -4964,12 +4977,12 @@
                 u_color: framebufferInfo.attachments[0],
                 u_light_: framebufferInfo.attachments[1],
                 u_normal: framebufferInfo.attachments[2],
-                u_depth: framebufferInfo.attachments[3],
+                u_depth: framebufferInfo.attachments[3]
             };
             Object.assign(screenUniforms, uniforms);
             bindFramebufferInfo(gl, framebufferInfo);
             uniforms.u_time = time;
-            gl.clearColor(0, 0, 0, 1);
+            gl.clearColor(1, 1, 1, 1);
             gl.enable(gl.DEPTH_TEST);
             gl.enable(gl.CULL_FACE);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -4977,6 +4990,7 @@
             setBuffersAndAttributes(gl, programInfo, bufferInfo);
             setUniforms(programInfo, uniforms);
             drawBufferInfo(gl, bufferInfo);
+            //logBuffer(gl);
             {
                 bindFramebufferInfo(gl, null);
                 //gl.clearColor(0, 0, 0, 0);

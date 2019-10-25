@@ -1,6 +1,7 @@
 import { cross, subtract, normalize } from "./twgl/v3";
 
 let utf8 = new TextDecoder("utf-8");
+const OVERHANG = 0.001;
 
 type v3 = [number, number, number];
 
@@ -122,8 +123,8 @@ export function createQuad(
       corner.map(
         (r, i) =>
           r +
-          (vi & 1 ? quadAxes[0][i] * sizes[0] : 0) +
-          (vi & 2 ? quadAxes[1][i] * sizes[1] : 0)
+          quadAxes[0][i] * (vi & 1 ? OVERHANG + sizes[0] : -OVERHANG) +
+          quadAxes[1][i] * (vi & 2 ? OVERHANG + sizes[1] : -OVERHANG)
       ) as v3
   );
 
@@ -302,7 +303,7 @@ export class VoxBox {
                         root + sizes[axi] * delta[axi] + i * delta[1 - axi];
                       if (
                         box[c] != rootColor ||
-                        neighbors[c] & (1 << quadNormal)
+                        neighbors[c] & (1 << quadNormal)// || (sizes[axi] > sizes[1-axi]*4)
                       ) {
                         blocked[axi] = true;
                         break;
